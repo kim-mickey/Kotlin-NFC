@@ -2,9 +2,10 @@ package com.freakyaxel.emvparser.api
 
 import java.text.DateFormat
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
-data class CardData internal constructor(
+class CardData internal constructor(
     val aid: List<String>,
     private val expectedDateFormat: DateFormat = EXPECTED_DATE_FORMAT,
     private val actualDateFormat: DateFormat = EXPECTED_DATE_FORMAT
@@ -26,25 +27,31 @@ data class CardData internal constructor(
     var dateExpDate: Date? = null
         private set
 
+    private var date: Date? = null
+
     var expDate: String? = null
-        set(value) {
+        internal set(value) {
             if (value == null) return
             field = value
-            val date = actualDateFormat.parse(value)
+            date = actualDateFormat.parse(value)
             dateExpDate = date
             formattedExpDate = expectedDateFormat.format(date)
         }
 
     var number: String? = null
-        set(value) {
+        internal set(value) {
             if (value == null) return
             val cleanValue = value.filter { it.isDigit() }
             field = cleanValue
             formattedNumber = cleanValue.chunked(4).joinToString(" ")
         }
 
-    val isComplete: Boolean
+    internal val isComplete: Boolean
         get() = number != null && expDate != null
+
+    fun formattedExpDate(format: DateFormat): String? {
+        return date?.let { format.format(it) }
+    }
 
     override fun toString(): String {
         return """
