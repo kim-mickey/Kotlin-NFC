@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.freakyaxel.emvparser.api.CardData
+import com.freakyaxel.emvparser.api.CardDataResponse
 import com.freakyaxel.emvparser.api.EMVReader
 import com.freakyaxel.emvparser.api.EMVReaderLogger
 import com.freakyaxel.emvparser.api.fold
@@ -68,7 +69,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback, EMVReaderLo
             onError = { it.error.message },
             onSuccess = { getCardLabel(it.cardData) },
             onTagLost = { "Card lost. Keep card steady!" },
-            onCardNotSupported = { "Card is not supported!" }
+            onCardNotSupported = { getCardNotSupportedLabel(it) }
         )
     }
 
@@ -76,6 +77,14 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback, EMVReaderLo
         super.onPause()
         nfcAdapter?.disableReaderMode(this)
     }
+}
+
+private fun getCardNotSupportedLabel(response: CardDataResponse.CardNotSupported): String {
+    val aids = response.aids
+    return """
+        Card is not supported!
+        AID: ${aids.takeIf { it.isNotEmpty() }?.joinToString(" | ") ?: "NOT FOUND"}
+    """.trimIndent()
 }
 
 private fun getCardLabel(cardData: CardData?): String {

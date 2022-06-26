@@ -149,7 +149,7 @@ internal class EmvTLVList(buf: ByteArray, offset: Int = 0) {
                 } while ((b == 0xFF || b == 0x00) && hasNext(buffer))
             }
             // Get first byte of Tag Identifier
-            var tag = b.toInt()
+            var tag = b
             // Get rest of Tag identifier if required
             if ((b and 0x1F) == 0x1F) {
                 do {

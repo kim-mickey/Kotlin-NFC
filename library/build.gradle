@@ -9,7 +9,7 @@ def REPOSITORY = 'emv-card-reader'
 def REPOSITORY_PACKAGE_URL = "https://maven.pkg.github.com/${OWNER}/${REPOSITORY}"
 
 group = "com.github.$OWNER"
-version = '0.0.1'
+version = '0.0.2'
 
 java {
     withSourcesJar()

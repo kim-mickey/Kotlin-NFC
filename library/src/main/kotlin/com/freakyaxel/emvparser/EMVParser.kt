@@ -1,6 +1,12 @@
 package com.freakyaxel.emvparser
 
-import com.freakyaxel.emvparser.api.*
+import com.freakyaxel.emvparser.api.CardData
+import com.freakyaxel.emvparser.api.CardDataResponse
+import com.freakyaxel.emvparser.api.CardNotSupportedException
+import com.freakyaxel.emvparser.api.CardTag
+import com.freakyaxel.emvparser.api.EMVReader
+import com.freakyaxel.emvparser.api.EMVReaderLogger
+import com.freakyaxel.emvparser.api.toCardReaderException
 import com.freakyaxel.emvparser.card.CardResponse
 import com.freakyaxel.emvparser.card.PseDirectory
 import com.freakyaxel.emvparser.tlv.EmvTLVList
@@ -9,11 +15,15 @@ internal class EMVParser(private val logger: EMVReaderLogger? = null) : EMVReade
 
     private fun CardTag.selectPseDirectory(fileName: String): PseDirectory {
         log("[Step 1]", "Select $fileName to get the PSE directory")
-        val fileNameAsBytes: ByteArray = fileName.toByteArray(Charsets.US_ASCII)
-        val fileNameSize: String = byteArrayOf(fileNameAsBytes.size.toByte()).toHex()
-        val fileNameAsHex: String = fileNameAsBytes.toHex()
+        val fileNameBytes: ByteArray = fileName.toByteArray(Charsets.US_ASCII)
+        val fileNameSizeByte = fileNameBytes.size.toByte()
 
-        return getCardResponse("00 A4 04 00 $fileNameSize $fileNameAsHex 00").let {
+        return getCardResponse(
+            command = "00 A4 04 00" +           // Command
+                    fileNameSizeByte.toHex() +  // Size
+                    fileNameBytes.toHex() +     // Data
+                    "00"                        // LE
+        ).let {
             log(it.data)
             PseDirectory(it.data)
         }
@@ -24,15 +34,16 @@ internal class EMVParser(private val logger: EMVReaderLogger? = null) : EMVReade
             if (handleConnection) cardTag.connect()
             cardTag.selectMasterFile().also { log(it) }
 
-            val pseDir = cardTag.getCardPseDirectory() ?: return CardDataResponse.cardNotSupported()
+            val pseDir = cardTag.getCardPseDirectory() ?: throw CardNotSupportedException()
 
             return cardTag.readCardData(pseDir).let {
                 CardDataResponse.success(it)
             }.also {
-                cardTag.disconnect()
+                if (handleConnection) cardTag.disconnect()
             }
         }.getOrElse {
             when {
+                it is CardNotSupportedException -> CardDataResponse.cardNotSupported(it.aids)
                 it.message.orEmpty().contains("was lost") -> CardDataResponse.tagLost()
                 else -> CardDataResponse.error(it.toCardReaderException())
             }
@@ -41,7 +52,7 @@ internal class EMVParser(private val logger: EMVReaderLogger? = null) : EMVReade
 
     private fun CardTag.selectMasterFile(): CardResponse {
         log("[Step 0]", "SELECT FILE Master File (if available)")
-        return getCardResponse("00 A4 04 00")
+        return getCardResponse(command = "00 A4 04 00")
     }
 
     private fun CardTag.getCardPseDirectory(): PseDirectory? {
@@ -58,34 +69,41 @@ internal class EMVParser(private val logger: EMVReaderLogger? = null) : EMVReade
     private fun CardTag.readCardData(pseDirectory: PseDirectory): CardData {
         val aids = pseDirectory.aids
         val cardData = CardData(aid = aids.map { it.toHex() })
-        pseDirectory.aids.onEach { aid ->
-            if (!cardData.isComplete) fillCardData(aid, cardData)
-        }
+        val cardIsSupported = aids.map { aid ->
+            selectAID(aid).also { aidReponse ->
+                if (!cardData.isComplete && aidReponse.isSuccess) fillAllCardData(cardData)
+            }.isSuccess
+        }.any { it }
+        if (!cardIsSupported) throw CardNotSupportedException(aids)
         return cardData
     }
 
-    private fun CardTag.fillCardData(aid: ByteArray, cardData: CardData) {
+    private fun CardTag.selectAID(aid: ByteArray): CardResponse {
         val aidSize: String = byteArrayOf(aid.size.toByte()).toHex(true)
         val aidAsHex: String = aid.toHex()
 
         log("[Step 2]", "Select Aid $aidAsHex")
         val cmd = "00 A4 04 00 $aidSize $aidAsHex 00"
-        val card = getCardResponse(cmd)
-
-        if (card.isSuccess) {
-            fillAllCardData(cardData)
-        }
+        return getCardResponse(cmd)
     }
 
     private fun CardTag.fillAllCardData(cardData: CardData) {
         var doContinue = true
+
+        // TODO: Understand how to make reading faster
+        //  May available record be read from the `Emv41.PDOL` ?
+        // Read this default record first. Reading my be faster. To be improved!
+        readRecord(0x14, 0x01).takeIf { it.isSuccess }?.let {
+            doContinue = !cardData.fillData(it.data)
+        }
+
         var sfi = 1
         log("[Step 3.2]", "Read All Records")
         while (sfi <= 31 && doContinue) {
             var rec = 1
             log("Read record", "sfi $sfi/31")
             while (rec <= 16 && doContinue) {
-                readRecord(sfi, rec).takeIf { it.isSuccess }?.let {
+                readRecord((sfi shl 3 or 4), rec).takeIf { it.isSuccess }?.let {
                     doContinue = !cardData.fillData(it.data)
                 }
                 rec++
@@ -96,14 +114,13 @@ internal class EMVParser(private val logger: EMVReaderLogger? = null) : EMVReade
 
     private fun CardTag.readRecord(sfi: Int, rec: Int): CardResponse {
         log("    Read", "SFI $sfi record #$rec")
-        val readCmd = byteArrayOf(
-            0x00,                       // READ_RECORD
-            0xB2.toByte(),              // READ_RECORD
-            rec.toByte(),               // record to read
-            (sfi shl 3 or 4).toByte(),  // record sfi
-            0x00                        // LE
+        return getCardResponse(
+            command = "00 B2" +             // Read Record Command
+                    rec.toByte().toHex() +  // Record ID
+                    sfi.toByte().toHex() +  // Record SFI
+                    "00",                   // LE
+            log = false
         )
-        return getCardResponse(readCmd, false)
     }
 
     private fun CardTag.getCardResponse(command: String, log: Boolean = true): CardResponse {
