@@ -6,6 +6,6 @@ repositories {
 }
 
 dependencies {
-    implementation "com.github.alexpopa95:evm-card-reader:{version}"
+    implementation "com.github.alexpopa95:emv-card-reader:{version}"
 }
 ```
