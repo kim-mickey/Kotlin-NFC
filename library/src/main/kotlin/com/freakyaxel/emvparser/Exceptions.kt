@@ -1,6 +1,4 @@
-package com.freakyaxel.emvparser.api
-
-import com.freakyaxel.emvparser.toHex
+package com.freakyaxel.emvparser
 
 class CardReaderException(
     override val message: String,

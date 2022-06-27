@@ -2,11 +2,9 @@ package com.freakyaxel.emvparser
 
 import com.freakyaxel.emvparser.api.CardData
 import com.freakyaxel.emvparser.api.CardDataResponse
-import com.freakyaxel.emvparser.api.CardNotSupportedException
 import com.freakyaxel.emvparser.api.CardTag
 import com.freakyaxel.emvparser.api.EMVReader
 import com.freakyaxel.emvparser.api.EMVReaderLogger
-import com.freakyaxel.emvparser.api.toCardReaderException
 import com.freakyaxel.emvparser.card.CardResponse
 import com.freakyaxel.emvparser.card.PseDirectory
 import com.freakyaxel.emvparser.tlv.EmvTLVList

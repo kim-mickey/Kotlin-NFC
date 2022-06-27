@@ -1,5 +1,7 @@
 package com.freakyaxel.emvparser.api
 
+import com.freakyaxel.emvparser.CardReaderException
+
 sealed class CardDataResponse {
     data class Error(val error: CardReaderException) : CardDataResponse()
     object TagLost : CardDataResponse()

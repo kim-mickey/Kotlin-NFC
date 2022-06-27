@@ -3,6 +3,7 @@ name: Build
 on:
   push:
     branches:
+    tags:
   workflow_dispatch:
 
 jobs:
@@ -10,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout project
         uses: actions/checkout@v2
 
       - name: Build
-        run: ./gradlew build
+        run: ./gradlew :library:build :app:buildDebug
 

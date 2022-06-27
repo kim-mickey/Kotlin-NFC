@@ -4,12 +4,13 @@ plugins {
     id 'maven-publish'
 }
 
-def OWNER = 'alexpopa95'
-def REPOSITORY = 'emv-card-reader'
+def OWNER = "alexpopa95"
+def REPOSITORY = "emv-card-reader"
 def REPOSITORY_PACKAGE_URL = "https://maven.pkg.github.com/${OWNER}/${REPOSITORY}"
 
+archivesBaseName = "$project_name"
 group = "com.github.$OWNER"
-version = '0.0.4'
+version = "0.0.4"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -20,9 +21,9 @@ publishing {
     publications {
         release(MavenPublication) {
             from components.java
-            groupId = project.group
-            artifactId = REPOSITORY
-            version = project.version
+            groupId project.group
+            artifactId REPOSITORY
+            version project.version
         }
     }
     repositories {

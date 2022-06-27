@@ -1,21 +1,40 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - '*.*.*'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version (example: 1.2.3)'
+        required: true
+      is_prerelease:
+        description: 'Pre-Release'
+        required: true 
+        type: boolean 
 
 jobs:
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: rlespinasse/github-slug-action@v3.x
-      - uses: actions/checkout@v2
+      - name: Checkout project
+        uses: actions/checkout@v2
+
+      - name: Update release files
+        run: ./update_release.sh '${{ github.event.inputs.version_name }}'
+
+      - name: Commit and Push
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: "Release ${{ github.event.inputs.version_name }}"
+          push: true
+          tag: "${{ github.event.inputs.version_name }}"
 
       - name: Assemble
-        run: ./gradlew assemble
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :library:assemble :app:assembleRelease
 
       - name: Release Package
         env:
@@ -25,7 +44,7 @@ jobs:
 
       - name: "Build Changelog"
         id: changelog
-        uses: mikepenz/release-changelog-builder-action@v2
+        uses: mikepenz/release-changelog-builder-action@v3.0.1
         with:
           configuration: "changelog.config.json"
         env:
@@ -34,7 +53,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          prerelease: ${{ github.event.inputs.is_prerelease }}
+          tag_name: ${{ github.event.inputs.version_name }}
           body: ${{steps.changelog.outputs.changelog}}
           files: |
-            ./library/build/libs/library-${{ env.GITHUB_REF_NAME }}.jar
-            ./app/build/outputs/apk/debug/app-debug.apk
+            ./library/build/libs/emv-card-reader-${{ github.event.inputs.version_name }}.jar
+            ./app/build/outputs/apk/release/emv-card-reader-${{ github.event.inputs.version_name }}.apk
+
