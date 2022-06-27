@@ -98,16 +98,22 @@ internal class EmvTLVList(buf: ByteArray, offset: Int = 0) {
             val tag = getTAG(buffer)
             if (tag == 0) return null
 
-            if (!buffer.hasRemaining()) throw RuntimeException(
-                String.format("BAD TLV FORMAT - tag (%x) without length or value", tag)
-            )
+            if (!buffer.hasRemaining()) {
+                //throw RuntimeException(
+                //    String.format("BAD TLV FORMAT - tag (%x) without length or value", tag)
+                //)
+                return null
+            }
             val length = getValueLength(buffer)
-            if (length > buffer.remaining()) throw RuntimeException(
-                String.format(
-                    "BAD TLV FORMAT - tag (%x) length (%d) exceeds available data.",
-                    tag, length
-                )
-            )
+            if (length > buffer.remaining()) {
+                //throw RuntimeException(
+                //    String.format(
+                //        "BAD TLV FORMAT - tag (%x) length (%d) exceeds available data.",
+                //        tag, length
+                //    )
+                //)
+                return null
+            }
             val arrValue = ByteArray(length)
             buffer.get(arrValue)
             return TagTLV(tag, arrValue, parent)
