@@ -10,7 +10,7 @@ def REPOSITORY_PACKAGE_URL = "https://maven.pkg.github.com/${OWNER}/${REPOSITORY
 
 archivesBaseName = "$project_name"
 group = "com.github.$OWNER"
-version = "0.0.4"
+version = "0.0.5"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
