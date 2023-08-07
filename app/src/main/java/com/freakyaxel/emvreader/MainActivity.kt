@@ -37,6 +37,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.freakyaxel.emvparser.api.CardData
 import com.freakyaxel.emvparser.api.CardDataResponse
 import com.freakyaxel.emvparser.api.EMVReader
@@ -62,18 +64,20 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback, EMVReaderLo
         var enteredNum = 0
         setContent {
             EMVReaderTheme {
+
+                val navController = rememberNavController()
+                NavGraphComponent(navController = navController)
                 if (isAmountEntered) {
                     AmountEntryScreen { number ->
                         enteredNum = number
                         isAmountEntered = false
                         setContent {
-                            NfcReaderScreen(this@MainActivity, enteredAmount = enteredNum)
+                            NfcReaderScreen(this@MainActivity, enteredAmount = enteredNum, navController)
                         }
                     }
 
-                }else
-                {
-                    NfcReaderScreen(this@MainActivity, enteredAmount = enteredNum)
+                } else {
+                    NfcReaderScreen(this@MainActivity, enteredAmount = enteredNum, navController)
                 }
             }
         }
@@ -115,22 +119,34 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback, EMVReaderLo
 
         val atqa: ByteArray = nfc.atqa
         val sak: Short = nfc.sak
-        val commandBytes: ByteArray = byteArrayOf(0x00,
-            0xA4.toByte(), 0x04, 0x00, 0x07,
-            0xF0.toByte(), 0xCA.toByte(), 0xFE.toByte(), 0xBA.toByte(), 0xBE.toByte(), 0xDE.toByte(),
-            0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()
+        val commandBytes: ByteArray = byteArrayOf(
+            0x00,
+            0xA4.toByte(),
+            0x04,
+            0x00,
+            0x07,
+            0xF0.toByte(),
+            0xCA.toByte(),
+            0xFE.toByte(),
+            0xBA.toByte(),
+            0xBE.toByte(),
+            0xDE.toByte(),
+            0xAD.toByte(),
+            0xBE.toByte(),
+            0xEF.toByte()
         )
         nfc.connect()
 
         val isConnected = nfc.isConnected
 
-        if (isConnected){
+        if (isConnected) {
             val receivedData: ByteArray = nfc.transceive(commandBytes)
             isNfcDiscovered = true
             val receivedString: String = receivedData.toString(Charsets.UTF_8)
             cardStateLabel.value = receivedString
         }
     }
+
     override fun onResume() {
         super.onResume()
 
@@ -197,9 +213,9 @@ fun CardDataScreen(data: String) {
         }) {
             Text(text = "Tap card to read ")
         }
-        if (clicked){
+        if (clicked) {
             Text(text = "")
-        }else{
+        } else {
             Text(text = data1)
         }
 
@@ -215,7 +231,11 @@ fun DefaultPreview() {
 }
 
 @Composable
-fun NfcReaderScreen(context: Context, enteredAmount: Int) {
+fun NfcReaderScreen(
+    context: Context,
+    enteredAmount: Int,
+    navController: NavController
+) {
     val nfcStatusText = remember { mutableStateOf("NFC Status: ") }
     val isCardPresent = remember { mutableStateOf(false) }
     val enteredPIN = remember { mutableStateOf("") }
@@ -235,6 +255,7 @@ fun NfcReaderScreen(context: Context, enteredAmount: Int) {
 //                IF Amount is greater than 100 move to pin input screen and check is the entered Pin
 //                is equal to a value say 4848
 //                then display success on a clear screen
+                navController.navigate("pinInputScreen")
             } else {
                 Text(text = "Transaction successful...") // Show card found message
 //                Display success on a clear screen
